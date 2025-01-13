@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration xmlns="https://logging.apache.org/xml/ns"
+               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xsi:schemaLocation="
+                   https://logging.apache.org/xml/ns
+                   https://logging.apache.org/xml/ns/log4j-config-2.xsd">
+  <!-- ======================================================= -->
+  <!--                                                         -->
+  <!--  Log4j Configuration                                    -->
+  <!--                                                         -->
+  <!-- ======================================================= -->
+
+  <!--
+   | For more configuration infromation and examples see the Jakarta Log4j
+   | website: http://jakarta.apache.org/log4j
+ -->
+  <Appenders>
+    <!-- ================================= -->
+    <!-- Preserve messages in a local file -->
+    <!-- ================================= -->
+
+    <!-- A time/date based rolling appender -->
+    <RollingFile name="FILE"
+                 fileName="${basePath}/dc.log"
+                 filePattern="${basePath}/dc-%d{yyyy-MM-dd}.log">
+      <PatternLayout
+              pattern="%d %-5p [%c] %m%n">
+      </PatternLayout>
+      <Policies>
+        <TimeBasedTriggeringPolicy interval="1" modulate="true" />
+      </Policies>
+    </RollingFile>
+
+    <!-- ============================== -->
+    <!-- Append messages to the console -->
+    <!-- Set Threshold to INFO/DEBUG -->
+    <!-- ============================== -->
+
+    <Console name="CONSOLE" target="SYSTEM_OUT">
+      <PatternLayout
+              pattern="%d %-5p [%c] %m%n">
+      </PatternLayout>
+    </Console>
+  </Appenders>
+
+  <Loggers>
+
+  <!-- ======================= -->
+  <!-- Setup the Root category -->
+  <!-- ======================= -->
+
+    <Root level="DEBUG">
+      <ThresholdFilter level="DEBUG" />
+      <AppenderRef ref="FILE"/>
+      <AppenderRef ref="CONSOLE"/>
+    </Root>
+  </Loggers>
+</Configuration>
