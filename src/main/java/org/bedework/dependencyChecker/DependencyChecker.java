@@ -17,6 +17,10 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static java.lang.String.format;
 
 /**
  * User: mike Date: 1/10/25 Time: 22:40
@@ -44,7 +48,7 @@ public class DependencyChecker implements Logged {
     //needUpdates.add(new JarInfo(""));
   }
 
-  final String[] needMigration = {
+  Set<String> needMigration = Stream.of(
           "com.sun.mail",
           "javax.activation",
           "javax.annotation",
@@ -61,12 +65,28 @@ public class DependencyChecker implements Logged {
           "javax.jms",
           "javax.json",
           "javax.json.bind",
+          "javax.jws",
           "javax.mail",
           "javax.mvc",
           "javax.pages",
+          "javax.persistence",
           "javax.resource",
-          "javax.servlet"
-  };
+          "javax.security.enterprise",
+          "javax.servlet",
+          "javax.servlet.jsp.jstl",
+          "javax.transaction",
+          "javax.validation",
+          "javax.websocket",
+          "javax.xml.bind",
+          "javax.xml.soap",
+          "javax.xml.ws"
+  ).collect(Collectors.toCollection(HashSet::new));
+
+  private static Set<String> ourGroups = Stream.of(
+          "org.bedework",
+          "org.bedework.bw-tzsvr"
+  ).collect(Collectors.toCollection(HashSet::new));
+
 
   public static void main(final String[] args) {
     final var dc = new DependencyChecker();
@@ -76,6 +96,14 @@ public class DependencyChecker implements Logged {
         dc.warn("Unable to parse dependency file: " + args[0]);
         System.exit(1);
       }
+
+      dc.info("\nAnalyzed tree\n");
+      dc.analyze(d);
+
+      dc.info("\nIndirect moved\n");
+      dc.listIndirectMoved(d);
+
+      dc.info("\nFull tree\n");
       dc.outTree(d, "");
     } catch (final Throwable t) {
       System.exit(1);
@@ -83,13 +111,88 @@ public class DependencyChecker implements Logged {
     System.exit(0);
   }
 
+  private void analyze(final Dependency d) {
+    d.setJavaxMoved(needMigration.contains(d.getGroupId()));
+    if (d.isJavaxMoved()) {
+      info(format("Javax moved: %s", d.getGroupId()));
+      var c = d.getParent();
+      var indent = "  ";
+      while (c != null) {
+        info(format("%s---> %s", indent, depInfo(c)));
+        c = c.getParent();
+        indent = indent + "  ";
+      }
+    }
+    if (d.getChildren() != null) {
+      for (final Dependency c : d.getChildren()) {
+        analyze(c);
+      }
+    }
+  }
+
+  private void printReverse(final Dependency d) {
+    info(format("Javax moved: %s", d.getGroupId()));
+    var c = d.getParent();
+    var indent = "  ";
+    while (c != null) {
+      info(format("%s---> %s", indent, depInfo(c)));
+      c = c.getParent();
+      indent = indent + "  ";
+    }
+  }
+
+  private void listIndirectMoved(final Dependency d) {
+    if (d.isJavaxMoved()) {
+      // Any parent not ours?
+      var c = d.getParent();
+      while (c != null) {
+        if (!ourGroups.contains(c.getGroupId())) {
+          printReverse(d);
+        }
+        c = c.getParent();
+      }
+    } else if (d.getChildren() != null) {
+      for (final Dependency c : d.getChildren()) {
+        listIndirectMoved(c);
+      }
+    }
+  }
+
+  private boolean hasMovedDependency(final Dependency d) {
+    if (d.isJavaxMoved()) {
+      return true;
+    }
+
+    if (d.getChildren() != null) {
+      for (final Dependency c : d.getChildren()) {
+        if (hasMovedDependency(c)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   private void outTree(final Dependency d,
                        final String indent) {
-    info(indent + d);
+    info(indent + depInfo(d));
     if (d.getChildren() != null) {
       for (final Dependency c : d.getChildren()) {
         outTree(c, indent + "  ");
       }
+    }
+  }
+
+  private String depInfo(final Dependency d) {
+    final var str = format("%s:%s,%s",
+                           d.getGroupId(),
+                           d.getArtifactId(),
+                           d.getVersion());
+
+    if (d.isJavaxMoved()) {
+      return format("%s ***Moved***", str);
+    } else {
+      return str;
     }
   }
 

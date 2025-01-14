@@ -29,13 +29,21 @@ class Dependency implements Comparable<Dependency> {
   private boolean optional;
 
   private List<Dependency> children;
+
   private boolean seen;
+
+  // true if moved to jakarta
+  private boolean javaxMoved;
 
   public Dependency() {
   }
 
   public void setParent(final Dependency val) {
     parent = val;
+  }
+
+  public Dependency getParent() {
+    return parent;
   }
 
   public void setGroupId(final String val) {
@@ -112,6 +120,14 @@ class Dependency implements Comparable<Dependency> {
 
   public boolean isSeen() {
     return seen;
+  }
+
+  public void setJavaxMoved(final boolean val) {
+    javaxMoved = val;
+  }
+
+  public boolean isJavaxMoved() {
+    return javaxMoved;
   }
 
   public int compareTo(final Dependency dependency) {
