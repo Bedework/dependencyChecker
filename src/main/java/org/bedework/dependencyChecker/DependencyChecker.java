@@ -3,6 +3,7 @@
 */
 package org.bedework.dependencyChecker;
 
+import org.bedework.util.args.Args;
 import org.bedework.util.logging.BwLogger;
 import org.bedework.util.logging.Logged;
 
@@ -26,6 +27,10 @@ import static java.lang.String.format;
  * User: mike Date: 1/10/25 Time: 22:40
  */
 public class DependencyChecker implements Logged {
+  private boolean showAnalyzed;
+  private boolean showFullTree;
+  private String fileName;
+
   private final Set<Dependency> dependenciesSet = new HashSet<>();
 
   static class JarInfo {
@@ -84,27 +89,79 @@ public class DependencyChecker implements Logged {
 
   private static Set<String> ourGroups = Stream.of(
           "org.bedework",
+          "org.bedework.caleng",
+          "org.bedework.bw-synch",
           "org.bedework.bw-tzsvr"
   ).collect(Collectors.toCollection(HashSet::new));
 
+  public void processArgs(final String[] args) {
+    final Args pargs = new Args(args);
+
+    try {
+      while (pargs.more()) {
+        if (pargs.ifMatch("-analysis")) {
+          showAnalyzed = true;
+          continue;
+        }
+
+        if (pargs.ifMatch("-fulltree")) {
+          showFullTree = true;
+          continue;
+        }
+
+        if (fileName == null) {
+          fileName = pargs.next();
+          continue;
+        }
+
+        error("Illegal argument: " +
+                      pargs.current());
+        usage();
+        System.exit(1);
+      }
+    } catch (final Throwable t) {
+      error(t);
+      System.exit(1);
+    }
+
+    if (fileName == null) {
+      error("Missing file name");
+      System.exit(1);
+    }
+  }
+
+  public void usage() {
+    info("Usage:");
+    info("  -analysis   display dependency check analysis results");
+    info("  -fulltree   display full tree of dependencies");
+  }
 
   public static void main(final String[] args) {
     final var dc = new DependencyChecker();
+
+    dc.processArgs(args);
+
     try {
-      final Dependency d = dc.parseJson(dc.mungeFile(args[0]));
+      final Dependency d =
+              dc.parseJson(dc.mungeFile(dc.fileName));
       if (d == null) {
-        dc.warn("Unable to parse dependency file: " + args[0]);
+        dc.warn("Unable to parse dependency file: " +
+                        dc.fileName);
         System.exit(1);
       }
 
-      dc.info("\nAnalyzed tree\n");
+      if (dc.showAnalyzed) {
+        dc.info("Analyzed tree\n");
+      }
       dc.analyze(d);
 
-      dc.info("\nIndirect moved\n");
+      dc.info("Indirect moved\n");
       dc.listIndirectMoved(d);
 
-      dc.info("\nFull tree\n");
-      dc.outTree(d, "");
+      if (dc.showFullTree) {
+        dc.info("Full tree\n");
+        dc.outTree(d, "");
+      }
     } catch (final Throwable t) {
       System.exit(1);
     }
@@ -114,11 +171,16 @@ public class DependencyChecker implements Logged {
   private void analyze(final Dependency d) {
     d.setJavaxMoved(needMigration.contains(d.getGroupId()));
     if (d.isJavaxMoved()) {
-      info(format("Javax moved: %s", d.getGroupId()));
+      if (showAnalyzed) {
+        info(format("Javax moved: %s", d.getGroupId()));
+      }
+
       var c = d.getParent();
       var indent = "  ";
       while (c != null) {
-        info(format("%s---> %s", indent, depInfo(c)));
+        if (showAnalyzed) {
+          info(format("%s---> %s", indent, depInfo(c)));
+        }
         c = c.getParent();
         indent = indent + "  ";
       }
@@ -148,6 +210,7 @@ public class DependencyChecker implements Logged {
       while (c != null) {
         if (!ourGroups.contains(c.getGroupId())) {
           printReverse(d);
+          return;
         }
         c = c.getParent();
       }

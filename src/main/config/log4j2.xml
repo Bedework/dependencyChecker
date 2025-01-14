@@ -21,10 +21,10 @@
 
     <!-- A time/date based rolling appender -->
     <RollingFile name="FILE"
-                 fileName="${basePath}/dc.log"
-                 filePattern="${basePath}/dc-%d{yyyy-MM-dd}.log">
+                 fileName="${env:HOME}/.dc/dc.log"
+                 filePattern="${env:HOME}/.dc/dc-%d{yyyy-MM-dd}.log">
       <PatternLayout
-              pattern="%d %-5p [%c] %m%n">
+              pattern="%d %-5p %m%n">
       </PatternLayout>
       <Policies>
         <TimeBasedTriggeringPolicy interval="1" modulate="true" />
@@ -38,7 +38,7 @@
 
     <Console name="CONSOLE" target="SYSTEM_OUT">
       <PatternLayout
-              pattern="%d %-5p [%c] %m%n">
+              pattern="%d %-5p %m%n">
       </PatternLayout>
     </Console>
   </Appenders>
